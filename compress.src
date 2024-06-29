@@ -1,0 +1,180 @@
+# Codigo fuente del Compresor de ADN
+# Autor:  Arnau Claramunt  -  17/05/2024
+
+import sys                              # para la longitud de los argumentos 
+from argparse import ArgumentParser     # para leer argumentos
+
+
+# -- Encode --
+
+def Encode(dna):
+
+    code = ""  # secuencia codificada
+    
+    A = "00"
+    C = "01"
+    G = "10"
+    T = "11"
+
+    for letra in dna:
+        if letra == 'A':
+            code += A
+        elif letra == 'C':
+            code += C
+        elif letra == 'G':
+            code += G
+        elif letra == 'T':
+            code += T
+
+    # si es multiple de 8
+    if (len(code) % 8) == 0:  # enviar un byte con todo As "00"
+        code += A + A + A + A
+    # no es multiple de 8, aprovechar y enviar donde habria el padding, un identificador de bits a quitar (ignorar)
+    else:
+        num_padding_bits = 8 - (len(code) % 8)
+
+        if num_padding_bits == 2:   # nos quedan 2 bits que seria de padding, identificador "01" y si se lee al final quitar solo una letra
+            code += C 
+        elif num_padding_bits == 4:
+            code += G + G
+        elif num_padding_bits == 6:
+            code += T + T + T
+
+
+    # pasar el codigo a bytes
+    code = int(code,2).to_bytes((len(code)+7)//8, byteorder='big')
+
+        
+    return code    # en bytes
+
+
+
+# -- Decode --
+
+def Decode(code):
+  
+    dna = ""  # secuencia decodificada
+
+    mida = len(code)
+    
+    # leer los ultimos dos bits, que diran cuanto hay que quitar (simulan el padding) 
+
+    ultimo = code[mida-2:]
+
+    if ultimo == "00":  # caso multiple de 8 (peor caso) (quitar un byte)
+        code = code[:mida-8] 
+    elif ultimo == "01":
+        code = code[:mida-2] 
+    elif ultimo == "10":
+        code = code[:mida-4]
+    elif ultimo == "11":
+        code = code[:mida-6]
+
+
+    # tratar por pares de la secuencia de bytes codificados
+    for i in range(0,len(code), 2):
+        
+        letra = code[i:i+2]   
+        
+        if letra == "00":
+            dna += 'A'
+        elif letra == "01":
+            dna += 'C'
+        elif letra == "10":
+            dna += 'G'
+        elif letra == "11":
+            dna += 'T'
+
+        
+    return dna
+
+
+def main():
+
+    # Leer los argumentos
+
+    parser = ArgumentParser(description='Indicar el nombre del fichero sin extension con -f nombre_fichero, -c para comprimir, -d para descomprimir    Ejemplo:   python3 compress.src -f AnCa -c')
+
+    # Add flag -f for specifying the filename
+    parser.add_argument("-f", dest="filename",
+                        help="nombre del fichero sin extension")
+
+    # Add flag -c for compression
+    parser.add_argument("-c", action="store_true",
+                        help="comprimir el fichero")
+    
+    parser.add_argument("-d", action="store_true",
+                        help="descomprimir el fichero")
+
+    args = parser.parse_args()
+
+
+    # Mirar que se hayan introducido argumentos (sin contar el nombre ejecutable)
+    if len(sys.argv) == 1:
+        print('\nError: no se han introducido argumentos, prueba con -h para ver el usage \nO prueba con este ejemplo:  python3 compress.src -f BuEb -c\n')
+        exit(1)
+
+    # Mirar que haya flag -f (fichero indicado)  
+    if not args.filename:
+        print('\nError: intruduce el nombre de un fichero con:   -f  nombre_fichero\n')
+        exit(1)
+      
+
+
+    outFilename = args.filename + ".bin"   # nombre del fichero comprimido
+
+
+    # Mirar si hay la opcion -c de comprimir  
+    if args.c:
+
+        # abrir fichero y obtener la secuencia de ADN
+
+        with open(f"./DNACorpus/{args.filename}", "r") as f:
+            dna = f.read()
+
+        # Comprimir (Encode)
+    
+        C = Encode(dna)
+       
+        # Guardar la secuencia codificada en un fichero
+        
+        code_treated = C      #int(C,2).to_bytes((len(C)+7)//8)
+
+
+        # escribir bytes
+        with open(outFilename, 'wb') as f: 
+           # f.write(code_treated, byteorder='big')   # añade padding de 0s al inicio si no es multiplo de 8
+
+            # code_treated en bytes
+            f.write(code_treated) 
+
+    # Mirar si hay la opcion -d de descomprimir
+    elif args.d:
+
+        # Descomprimir (Decode)
+
+        outFilename_dec = args.filename    # nombre que tendra el fichero descomprimido 
+
+        # leer fichero de bytes
+        with open(outFilename, "rb") as f_out:
+            code_bytes = f_out.read()
+
+        # convertir datos bytes a string binaria 
+        code = ''.join(format(byte, '08b') for byte in code_bytes)
+
+
+        orig_dna_seq = Decode(code)
+
+
+        # guardar la secuencia original descomprimida en un fichero
+        with open(outFilename_dec, 'w') as f: 
+            f.write(orig_dna_seq)
+
+    else:
+        print('\nError: introduce un flag para comprimir -c  o  descomprimir -d\n')
+        exit(1)
+
+  
+
+main()
+
