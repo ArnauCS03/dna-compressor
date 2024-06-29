@@ -1,5 +1,5 @@
-# dna-compressor
-Project for the subject "Compressió de Dades i Imatges"  (Data and image compression) in FIB - UPC Barcelona. The objective was to compress some DNA files, aiming to achieve the best possible compression ratio.<br>
+# DNA Compressor
+Project for the subject "Compressió de Dades i Imatges"  (Data and image compression) in FIB - UPC Barcelona. The objective was to compress some DNA files, aiming to achieve the best possible compression ratio. Coded in Python.<br>
 
 The statement and the project are written in Spanish: <br><br>
 
